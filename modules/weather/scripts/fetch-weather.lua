@@ -5,23 +5,19 @@
 json = require("json")
 config = require("config")
 
-api_url = "http://api.openweathermap.org/data/2.5/weather?"
+-- Url de l'api
+api_url = "https://www.meteo.bzh/previsions/ajax/ville/heures"
 
--- http://openweathermap.org/help/city_list.txt , http://openweathermap.org/find
-city_id = config.weather.city_id
-
--- metric or imperial
-cf = config.weather.unit
-
--- get an open weather map api key: http://openweathermap.org/appid
-api_key = config.weather.api_key
+-- Code insee de la ville dont on veut connaître la météo
+insee = config.insee
 
 -- measure is °C if metric and °F if imperial
-measure = '°' .. (cf == 'metric' and 'C' or 'F')
+measure = '°C'
 
 cache_file = "weather.json"
 
 currenttime = os.date("!%Y%m%d%H%M%S")
+current_hour = math.floor(os.date("!%H") + 1)
 
 file_exists = function (name)
     f=io.open(name,"r")
@@ -74,9 +70,9 @@ end
 if timepassed < 3600 then
     response = data
 else
-    weather = capture(string.format("curl -L \'%sid=%s&units=%s&APPID=%s\'", api_url, city_id, cf, api_key))
+    weather = capture(string.format("curl -L '%s' --form 'insee=%s' --form 'day=0' ", api_url, insee))
     if weather then
-        response = json.decode(weather)
+        response = json.decode(weather)[current_hour]
         makecache(response)
     else
         response = data
@@ -87,10 +83,10 @@ math.round = function (n)
     return math.floor(n + 0.5)
 end
 
-temp = response.main.temp
-conditions = response.weather[1].main
-icon = response.weather[1].icon:sub(1, 2)
+temp = response.temp
+conditions = response.forecast
+city = response.name
 
-io.write(("${color %s}${font %s:size=18}%s%s ${font %s:light:size=18}| %s\n"):format(config.color, config.font, math.round(temp), measure, config.font, conditions))
+io.write(("${color %s}${font %s:size=18}%s\n%s%s ${font %s:light:size=18}| %s\n"):format(config.color, config.font,city, math.round(temp), measure, config.font, conditions))
 
 cache:close()
